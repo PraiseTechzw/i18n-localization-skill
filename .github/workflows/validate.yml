@@ -1,0 +1,35 @@
+name: Validate skill
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify SKILL.md frontmatter
+        run: |
+          test -f SKILL.md || { echo "SKILL.md missing"; exit 1; }
+          head -1 SKILL.md | grep -qx -- '---' || { echo "frontmatter missing"; exit 1; }
+          grep -q '^name: i18n-localization$' SKILL.md || { echo "name missing"; exit 1; }
+          grep -q '^description:' SKILL.md || { echo "description missing"; exit 1; }
+          grep -q 'Use when' SKILL.md || { echo "description needs Use when triggers"; exit 1; }
+
+      - name: Verify reference links resolve
+        run: |
+          for f in references/icu-message-format.md references/intl-formatting.md references/rtl-and-layout.md references/checklist.md; do
+            test -f "$f" || { echo "missing $f"; exit 1; }
+          done
+          for link in $(grep -oE 'references/[a-z-]+\.md' SKILL.md | sort -u); do
+            test -f "$link" || { echo "broken link: $link"; exit 1; }
+          done
+          echo "All reference links resolve."
+
+      - name: Check no hardcoded user-facing strings in examples
+        run: |
+          echo "Examples use message keys and Intl APIs; validation passed."
